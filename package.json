@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "description": "A typescript implementation of the Rapid Automated Keyword Extraction (RAKE) algorithm with Part-of-Speech post-processing",
   "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "jest",
     "build": "tsc",
+    "clean": "rm -rf package-lock.json dist build coverage node_modules",
+    "prepublishOnly": "npm run build",
     "start": "react-scripts start",
-    "clean": "rm -rf package-lock.json dist build coverage node_modules"
+    "test": "jest"
   },
   "keywords": [
     "keyword",
@@ -30,5 +30,8 @@
   "dependencies": {
     "brill": "^3.1.0",
     "lodash": "^4.17.4"
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }
