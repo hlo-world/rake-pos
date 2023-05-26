@@ -1,0 +1,34 @@
+{
+  "name": "rake-pos",
+  "version": "1.0.0",
+  "description": "A typescript implementation of the Rapid Automated Keyword Extraction (RAKE) algorithm with Part-of-Speech post-processing",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "test": "jest",
+    "build": "tsc",
+    "start": "react-scripts start",
+    "clean": "rm -rf package-lock.json dist build coverage node_modules"
+  },
+  "keywords": [
+    "keyword",
+    "extraction",
+    "rake",
+    "pos",
+    "ts"
+  ],
+  "author": "Harris Lo",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.22.1",
+    "@babel/preset-env": "^7.22.2",
+    "@types/jest": "^27.5.2",
+    "babel-jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^4.3.5"
+  },
+  "dependencies": {
+    "brill": "^3.1.0",
+    "lodash": "^4.17.4"
+  }
+}
