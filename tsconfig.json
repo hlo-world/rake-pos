@@ -3,6 +3,7 @@
     "outDir": "dist",
     "target": "es2022",
     "module": "commonjs",
+    "declaration": true,
     "esModuleInterop": true
   },
   "include": [
