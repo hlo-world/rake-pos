@@ -1,6 +1,6 @@
 {
   "name": "rake-pos",
-  "version": "1.0.0",
+  "version": "1.0.0.1",
   "description": "A typescript implementation of the Rapid Automated Keyword Extraction (RAKE) algorithm with Part-of-Speech post-processing",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
