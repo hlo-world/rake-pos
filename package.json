@@ -1,13 +1,13 @@
 {
   "name": "rake-pos",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A typescript implementation of the Rapid Automated Keyword Extraction (RAKE) algorithm with Part-of-Speech post-processing",
   "author": "Harris Lo",
   "license": "MIT",
-    "repository": {
-      "type": "git",
-      "url": "https://github.com/hlo-world/rake-pos.git"
-    },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hlo-world/rake-pos.git"
+  },
   "keywords": [
     "keyword",
     "extraction",
