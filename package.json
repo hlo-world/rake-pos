@@ -2,14 +2,12 @@
   "name": "rake-pos",
   "version": "1.0.1",
   "description": "A typescript implementation of the Rapid Automated Keyword Extraction (RAKE) algorithm with Part-of-Speech post-processing",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "clean": "rm -rf package-lock.json dist build coverage node_modules",
-    "prepublishOnly": "npm run build && npm run test",
-    "test": "jest"
-  },
+  "author": "Harris Lo",
+  "license": "MIT",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/hlo-world/rake-pos.git"
+    },
   "keywords": [
     "keyword",
     "extraction",
@@ -18,8 +16,14 @@
     "ts",
     "typescript"
   ],
-  "author": "Harris Lo",
-  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf package-lock.json dist build coverage node_modules",
+    "prepublishOnly": "npm run build && npm run test",
+    "test": "jest"
+  },
   "devDependencies": {
     "@babel/core": "^7.22.1",
     "@babel/preset-env": "^7.22.2",
