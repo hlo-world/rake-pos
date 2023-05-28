@@ -4,23 +4,32 @@ The goal of this library was to create a Typescript translation of the
 [javacsript implementation](https://github.com/sleepycat/rapid-automated-keyword-extraction),
 which in itself was a translation of the [python implementation](https://github.com/zelandiya/RAKE-tutorial).
 
+Extraction defaults to processing the input text as if it is written in the English language. Stop
+words are provided by default using [stopwords-iso](https://github.com/stopwords-iso/stopwords-iso)
+
 In addition, Part-of-Speech post-processing is used to further filter keywords. This is done by
 using [an implementation of brill tagging](https://github.com/words/brill). For usage details,
 see the [list of brill tag descriptions](https://github.com/words/brill/blob/main/lib/descriptions.js)
 
-# Usage
+# Basic Usage
 
 ```typescript
+
 let keywords: string[] = [];
 console.log(keywords);
 > []
-const text = 'I have some apples and bananas here for the table';
-const stopWordSet = new Set(['the', 'and', 'of', 'some', 'apples', 'have']); // Example stop words
-const posAllowedSet = new Set(['NN', 'NNS']); // Example POS allowed set
-keywords = extractWithRakePos({ text, stopWordSet, posAllowedSet });
+const text: string = 'I have some apples and bananas here for the table';
+keywords = extractWithRakePos({ text });
+console.log(keywords);
+> ['table', 'bananas', 'apples']
+const additionalStopWordSet: Set<string> = new Set(['apples']);
+const keywords = extractWithRakePos({ text, additionalStopWordSet });
+keywords = extractWithRakePos({ text, additionalStopWordSet});
 console.log(keywords);
 > ['table', 'bananas']
 ```
+
+---
 
 # Original README from javacsript implementation below:
 
