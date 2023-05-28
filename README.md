@@ -18,13 +18,14 @@ see the [list of brill tag descriptions](https://github.com/words/brill/blob/mai
 let keywords: string[] = [];
 console.log(keywords);
 > []
-const text: string = 'I have some apples and bananas here for the table';
-keywords = extractWithRakePos({ text });
+
+const input: string = 'I have some apples and bananas here for the table';
+keywords = extractWithRakePos({ text: input });
 console.log(keywords);
 > ['table', 'bananas', 'apples']
-const additionalStopWordSet: Set<string> = new Set(['apples']);
-const keywords = extractWithRakePos({ text, additionalStopWordSet });
-keywords = extractWithRakePos({ text, additionalStopWordSet});
+
+const stop: Set<string> = new Set(['apples']);
+keywords = extractWithRakePos({ text: input, additionalStopWordSet: stop });
 console.log(keywords);
 > ['table', 'bananas']
 ```
