@@ -23,7 +23,7 @@
     "clean": "rm -rf package-lock.json dist build coverage node_modules",
     "prepublishOnly": "npm run build && npm run test",
     "test": "jest",
-    "publish": "npm test && git add . && npm version $1 -f && git commit --amend -m \"$2\" && git push && npm publish"
+    "puball": "git add . && npm version $1 -f && git commit --amend -m '$2' && git push --tags && npm publish"
   },
   "devDependencies": {
     "@babel/core": "^7.22.1",
