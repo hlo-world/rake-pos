@@ -1,6 +1,6 @@
 {
   "name": "rake-pos",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "A typescript implementation of the Rapid Automated Keyword Extraction (RAKE) algorithm with Part-of-Speech post-processing",
   "author": "Harris Lo",
   "license": "MIT",
@@ -23,7 +23,7 @@
     "clean": "rm -rf package-lock.json dist build coverage node_modules",
     "prepublishOnly": "npm run build",
     "test": "jest",
-    "preversion": "echo '\nUsage:\nnpm version <major|minor|patch> -f -m \"Some message to commit\"' && npm run test",
+    "preversion": "echo '\nUsage:\nnpm version <major|minor|patch> -f -m \"Some message to commit\"\n\n' && npm run test",
     "version": "",
     "postversion": "git push && git push --tags && npm publish"
   },
