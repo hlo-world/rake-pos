@@ -1,5 +1,6 @@
 import { fromPairs, sortBy, toPairs } from 'lodash';
 import { brill } from 'brill';
+import isoStopWordSet from 'stopwords-iso/stopwords-iso.json';
 
 function isNumber(str: string): boolean {
     return /\d/.test(str);
@@ -147,23 +148,39 @@ export function splitSentences(text: string): string[] {
     return text.split(sentenceDelimiters);
 }
 
+/**
+ * Extracts keywords from text using RAKE and POS tag filtering
+ * 
+ * @param {string} text - The text from which keywords are to be extracted.
+ * @param {string} [language='en'] - The language of the text.
+ * @param {Set<string>} [additionalStopWordSet=new Set<string>([''])] - Additional set of stop words to be excluded.
+ * @param {Set<string>} [posAllowedSet=new Set<string>(['NN', 'NNS'])] - Set of allowed parts of speech (POS) tags.
+ * @param {number} [minCharLength=1] - Minimum character length for a keyword.
+ * @param {number} [maxWordsLength=5] - Maximum number of words in a keyword.
+ * @param {number} [minKeywordFrequency=1] - Minimum frequency of a keyword to be considered.
+ * 
+ * @returns {string[]} - An array of extracted keywords.
+ */
 export default function extractWithRakePos({
     text,
-    stopWordSet = new Set<string>(['']),
+    language = 'en',
+    additionalStopWordSet = new Set<string>(['']),
     posAllowedSet = new Set<string>(['NN', 'NNS']),
-    minCharLength = 3,
+    minCharLength = 1,
     maxWordsLength = 5,
     minKeywordFrequency = 1,
 }: {
     text: string;
-    stopWordSet?: Set<string>;
+    language?: string;
+    additionalStopWordSet?: Set<string>;
     posAllowedSet?: Set<string>;
     minCharLength?: number;
     maxWordsLength?: number;
     minKeywordFrequency?: number;
 }): string[] {
+    const combinedStopWordSet = new Set([...isoStopWordSet[language], ...additionalStopWordSet]);
     const sentenceList = splitSentences(text);
-    const phraseList = generateCandidateKeywords(sentenceList, stopWordSet, minCharLength, maxWordsLength);
+    const phraseList = generateCandidateKeywords(sentenceList, combinedStopWordSet, minCharLength, maxWordsLength);
     const wordScores = calculateWordScores(phraseList);
     const keywordCandidates = generateCandidateKeywordScores(phraseList, wordScores, minKeywordFrequency);
     const sortedKeywords = fromPairs(sortBy(toPairs(keywordCandidates), (pair: any) => pair[1]).reverse());
