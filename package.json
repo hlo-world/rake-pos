@@ -1,6 +1,6 @@
 {
   "name": "rake-pos",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "A typescript implementation of the Rapid Automated Keyword Extraction (RAKE) algorithm with Part-of-Speech post-processing",
   "author": "Harris Lo",
   "license": "MIT",
