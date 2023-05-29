@@ -162,7 +162,7 @@ function splitSentences(text: string): string[] {
 export default function extractWithRakePos({
     text,
     language = 'en',
-    additionalStopWordSet = new Set<string>(['']),
+    additionalStopWordSet,
     posAllowedSet = new Set<string>(['NN', 'NNS']),
     minCharLength = 1,
     maxWordsLength = 5,
@@ -176,7 +176,7 @@ export default function extractWithRakePos({
     maxWordsLength?: number;
     minKeywordFrequency?: number;
 }): string[] {
-    const combinedStopWordSet = new Set([...isoStopWordSet[language], ...additionalStopWordSet]);
+    const combinedStopWordSet = additionalStopWordSet ? new Set([...isoStopWordSet[language], ...additionalStopWordSet]) : isoStopWordSet[language];
     const sentenceList = splitSentences(text);
     const phraseList = generateCandidateKeywords(sentenceList, combinedStopWordSet, minCharLength, maxWordsLength);
     const wordScores = calculateWordScores(phraseList);
