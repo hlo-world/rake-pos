@@ -7,7 +7,7 @@ function isNumber(str: string): boolean {
 }
 
 // TODO: smaller functions should be extracted from this
-export function isAcceptable(phrase: string, minCharLength: number, maxWordsLength: number): boolean {
+function isAcceptable(phrase: string, minCharLength: number, maxWordsLength: number): boolean {
     // A phrase must have a min length in characters
     if (phrase.length < minCharLength) {
         return false;
@@ -43,13 +43,13 @@ export function isAcceptable(phrase: string, minCharLength: number, maxWordsLeng
     return true;
 }
 
-export function countOccurrences(haystack: string[], needle: string): number {
+function countOccurrences(haystack: string[], needle: string): number {
     return haystack.reduce((n: number, value: string) => {
         return n + (value === needle ? 1 : 0);
     }, 0);
 }
 
-export function generateCandidateKeywordScores(
+function generateCandidateKeywordScores(
     phraseList: string[],
     wordScore: Record<string, number>,
     minKeywordFrequency = 1
@@ -75,7 +75,7 @@ export function generateCandidateKeywordScores(
     return keywordCandidates;
 }
 
-export function separateWords(text: string, minWordReturnSize: number): string[] {
+function separateWords(text: string, minWordReturnSize: number): string[] {
     const wordDelimiters = /[^a-zA-Z0-9_+\-/]/;
     const words: string[] = [];
     text.split(wordDelimiters).forEach((singleWord) => {
@@ -88,7 +88,7 @@ export function separateWords(text: string, minWordReturnSize: number): string[]
     return words;
 }
 
-export function calculateWordScores(phraseList: string[]): Record<string, number> {
+function calculateWordScores(phraseList: string[]): Record<string, number> {
     const wordFrequency: Record<string, number> = {};
     const wordDegree: Record<string, number> = {};
     phraseList.forEach((phrase) => {
@@ -123,7 +123,7 @@ export function calculateWordScores(phraseList: string[]): Record<string, number
     return wordScore;
 }
 
-export function generateCandidateKeywords(
+function generateCandidateKeywords(
     sentenceList: string[],
     stopWordSet: Set<string>,
     minCharLength = 1,
@@ -143,14 +143,13 @@ export function generateCandidateKeywords(
     return phraseList;
 }
 
-export function splitSentences(text: string): string[] {
+function splitSentences(text: string): string[] {
     const sentenceDelimiters = /[[\]!.?,;:\t\\\-"'()'\u2019\u2013\n]/;
     return text.split(sentenceDelimiters);
 }
 
 /**
  * Extracts keywords from text using RAKE and POS tag filtering
- * 
  * @param {string} text - The text from which keywords are to be extracted.
  * @param {string} [language='en'] - The language of the text.
  * @param {Set<string>} [additionalStopWordSet=new Set<string>([''])] - Additional set of stop words to be excluded.
@@ -158,7 +157,6 @@ export function splitSentences(text: string): string[] {
  * @param {number} [minCharLength=1] - Minimum character length for a keyword.
  * @param {number} [maxWordsLength=5] - Maximum number of words in a keyword.
  * @param {number} [minKeywordFrequency=1] - Minimum frequency of a keyword to be considered.
- * 
  * @returns {string[]} - An array of extracted keywords.
  */
 export default function extractWithRakePos({
