@@ -159,7 +159,7 @@ function generateScoredPhrases(phraseList: string[], minKeywordFrequency = 1): M
  * Extract raw keywords from a text using regex word boundary matching.
  */
 function extractRawKeywords(text: string): string[] {
-    return text.match(/\b\w+\b/g);
+    return text.match(/\b\w+\b/g) || [];
 }
 
 /**
