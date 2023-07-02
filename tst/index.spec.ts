@@ -54,7 +54,6 @@ describe('extractWithRakePos function', () => {
 
     test('should only return keywords with allowed POS tags', () => {
         brill['ab'] = ['NN'];
-        brill['cd'] = ['JJ'];
         const keywords = extractWithRakePos({
             text: 'ab jeremy',
             posAllowedSet: new Set(['NN'])
