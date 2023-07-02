@@ -2,45 +2,65 @@ import { fromPairs, sortBy, toPairs } from 'lodash';
 import { brill } from 'brill';
 import isoStopWordSet from 'stopwords-iso/stopwords-iso.json';
 
-function isNumber(str: string): boolean {
-    return /\d/.test(str);
+const CHAR_CODE_ZERO = "0".charCodeAt(0);
+const CHAR_CODE_NINE = "9".charCodeAt(0);
+
+/**
+ * A function that takes a keyword and returns true if it is acceptable, false otherwise.
+ */
+type AcceptabilityFilter = (keyword: string) => boolean;
+
+/**
+ * Tests whether a string character is a digit.
+ * @param char
+ */
+function isNumber(char: string) {
+    // In case the "char" is not actually a single character; we only care about the first character.
+    const charCode = char.charCodeAt(0);
+    return( charCode >= CHAR_CODE_ZERO && charCode <= CHAR_CODE_NINE );
 }
 
-// TODO: smaller functions should be extracted from this
-function isAcceptable(phrase: string, minCharLength: number, maxWordsLength: number): boolean {
-    // A phrase must have a min length in characters
-    if (phrase.length < minCharLength) {
-        return false;
-    }
-    // A phrase must have a max number of words
-    const words = phrase.split(' ');
-    if (words.length > maxWordsLength) {
-        return false;
-    }
+/**
+ * Create an AcceptabilityFilter that filters out words in a given Set<string>.
+ */
+function createStopWordFilter(stopWordSet: Set<string>): AcceptabilityFilter {
+    return (keyword: string) => !stopWordSet.has(keyword);
+}
 
-    let digits = 0;
-    let alpha = 0;
-    // Is there a better way to do this?
-    for (let i = 0; i < phrase.length; i++) {
-        if (/\d/.test(phrase[i])) {
-            digits += 1;
+/**
+ * Create an AcceptabilityFilter that filters for:
+ * - A phrase must have at least one alpha character
+ * - A phrase must have more alpha than digits characters
+ */
+function createAlphaDigitsAcceptabilityFilter(): AcceptabilityFilter {
+    return (phrase: string) => {
+        let digits = 0;
+        let alpha = 0;
+        for (let i = 0; i < phrase.length; i++) {
+            if (/\d/.test(phrase[i])) {
+                digits += 1;
+                continue
+            }
+            if (/[a-zA-Z]/.test(phrase[i])) {
+                alpha += 1;
+            }
         }
-        if (/[a-zA-Z]/.test(phrase[i])) {
-            alpha += 1;
-        }
-    }
+        return (alpha > 0 && digits <= alpha);
+    };
+}
 
-    // A phrase must have at least one alpha character
-    if (alpha === 0) {
-        return false;
-    }
+/**
+ * Create an AcceptabilityFilter that filters for minCharLength.
+ */
+function createMinCharLengthFilter(minCharLength: number): AcceptabilityFilter {
+    return (phrase: string) => phrase.length >= minCharLength;
+}
 
-    // A phrase must have more alpha than digits characters
-    if (digits > alpha) {
-        return false;
-    }
-
-    return true;
+/**
+ * Create an AcceptabilityFilter that filters for maxWordsLength, using the word boundary regex.
+ */
+function createMaxWordsLengthFilter(maxWordsLength: number): AcceptabilityFilter {
+    return (phrase: string) => phrase.split(/\b/).length <= maxWordsLength;
 }
 
 function countOccurrences(haystack: string[], needle: string): number {
@@ -117,35 +137,38 @@ function calculateWordScores(phraseList: string[]): Record<string, number> {
         if (!(item in wordScore)) {
             wordScore[item] = 0;
         }
-        wordScore[item] = wordDegree[item] / (wordFrequency[item] * 1.0);
+        wordScore[item] = wordDegree[item] / (wordFrequency[item]);
     });
 
     return wordScore;
 }
 
-function generateCandidateKeywords(
-    sentenceList: string[],
-    stopWordSet: Set<string>,
-    minCharLength = 1,
-    maxWordsLength = 5
-): string[] {
-    const phraseList: string[] = [];
-    sentenceList.forEach((sentence) => {
-        const tmp = sentence.replace(/[^\w\s]|_/g, '').replace(/\s+/g, ' ');
-        const phrases = tmp.split(' ');
-        phrases.forEach((ph) => {
-            const phrase = ph.trim().toLowerCase();
-            if (phrase !== '' && isAcceptable(phrase, minCharLength, maxWordsLength) && !stopWordSet.has(phrase)) {
-                phraseList.push(phrase);
-            }
-        });
-    });
-    return phraseList;
+/**
+ * Extract raw keywords from a text using regex word boundary matching.
+ */
+function extractRawKeywords(text: string): string[] {
+    return text.match(/\b\w+\b/g);
 }
 
-function splitSentences(text: string): string[] {
-    const sentenceDelimiters = /[[\]!.?,;:\t\\\-"'()'\u2019\u2013\n]/;
-    return text.split(sentenceDelimiters);
+/**
+ * Normalizes raw keywords by converting to lowercase and removing leading and trailing whitespace.
+ */
+function normalizeKeyword(rawKeyword: string): string {
+    return rawKeyword.toLowerCase().trim();
+}
+
+/**
+ * Filters normalized keywords using a set of stop words and zero or many manual acceptability filters.
+ * Finally, deduplicates the keywords.
+ */
+function filterKeywords(
+    normalizedKeywords: string[],
+    acceptabilityFilters: AcceptabilityFilter[]
+): string[] {
+    return acceptabilityFilters.reduce(
+        (keywords, filter) => keywords.filter(filter),
+        normalizedKeywords
+    );
 }
 
 /**
@@ -177,8 +200,17 @@ export default function extractWithRakePos({
     minKeywordFrequency?: number;
 }): string[] {
     const combinedStopWordSet = additionalStopWordSet ? new Set([...isoStopWordSet[language], ...additionalStopWordSet]) : isoStopWordSet[language];
-    const sentenceList = splitSentences(text);
-    const phraseList = generateCandidateKeywords(sentenceList, combinedStopWordSet, minCharLength, maxWordsLength);
+    const rawPhraseList = extractRawKeywords(text).map(normalizeKeyword);
+    const phraseList = filterKeywords(
+        rawPhraseList,
+        [
+            createStopWordFilter(combinedStopWordSet),
+            createMinCharLengthFilter(minCharLength),
+            // NOTE(2 July 2023): This filter is disabled because the original implementation in this package made it irrelevant.
+            //   To make this relevant, we need to create "keywords" in a way that allows whitespace to be included.
+            // createMaxWordsLengthFilter(maxWordsLength),
+            createAlphaDigitsAcceptabilityFilter()
+        ])
     const wordScores = calculateWordScores(phraseList);
     const keywordCandidates = generateCandidateKeywordScores(phraseList, wordScores, minKeywordFrequency);
     const sortedKeywords = fromPairs(sortBy(toPairs(keywordCandidates), (pair: any) => pair[1]).reverse());
