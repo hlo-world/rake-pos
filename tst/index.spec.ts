@@ -45,7 +45,7 @@ describe('extractWithRakePos function', () => {
 
     test('should only return keywords with minimum frequency', () => {
         const keywords = extractWithRakePos({
-            text: 'ab ab cd',
+            text: 'ab ab cat',
             minKeywordFrequency: 2,
             posAllowedSet: new Set(['NN'])
         });
@@ -56,7 +56,7 @@ describe('extractWithRakePos function', () => {
         brill['ab'] = ['NN'];
         brill['cd'] = ['JJ'];
         const keywords = extractWithRakePos({
-            text: 'ab cd',
+            text: 'ab jeremy',
             posAllowedSet: new Set(['NN'])
         });
         expect(keywords).toEqual(['ab']);

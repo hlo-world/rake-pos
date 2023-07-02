@@ -145,7 +145,8 @@ function generateScoredPhrases(phraseList: string[], minKeywordFrequency = 1): M
     for (const [phrase, wordScores] of Object.entries(phraseToWordScores)) {
         // We don't check for `undefined` because we initialize phraseScores with phraseToWordScores.
         if (phraseScores[phrase].frequency < minKeywordFrequency) {
-            continue
+            delete phraseScores[phrase];
+            continue;
         }
         for (const wordScore of wordScores) {
             phraseScores[phrase].score += wordScore.score;
