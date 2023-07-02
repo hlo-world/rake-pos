@@ -64,7 +64,7 @@ function createAlphaDigitsAcceptabilityFilter(): AcceptabilityFilter {
                 alpha += 1;
             }
         }
-        return (alpha > 0 && digits <= alpha);
+        return (alpha > 0 && digits < alpha);
     };
 }
 
@@ -183,6 +183,17 @@ function filterKeywords(
 }
 
 /**
+ * Given a keyword, query the `brill` implementation using lowercase, UPPERCASE, Titlecase, SPLIT-123 variants.
+ */
+function queryBrill(keyword: string): string[] {
+    const basic = brill[keyword] || [];
+    const upper = brill[keyword.toUpperCase()] || [];
+    const title = brill[keyword[0].toUpperCase() + keyword.slice(1)] || [];
+    const splitNums = brill[keyword.replace(/[^a-zA-Z0-9]/g, ' ')] || [];
+    return [...new Set([...basic, ...upper, ...title, ...splitNums])];
+}
+
+/**
  * Extracts keywords from text using RAKE and POS tag filtering
  * @param {string} text - The text from which keywords are to be extracted.
  * @param {string} [language='en'] - The language of the text.
@@ -241,7 +252,7 @@ export default function extractWithRakePos({
     //   allowed parts of speech `posAllowedSet`.
     return keywordCandidatesPairs.map((pair) => pair[0])
         .filter((keyword) => {
-            const keywordPOS = brill[keyword] || []; // Protect against undefined.
+            const keywordPOS = queryBrill(keyword);
             const intersect = new Set([...keywordPOS].filter(x => posAllowedSet.has(x)));
             return intersect.size > 0;
         });

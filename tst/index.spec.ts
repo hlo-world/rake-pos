@@ -37,10 +37,10 @@ describe('extractWithRakePos function', () => {
 
     test('should filter out phrases with more digits than alpha characters', () => {
         const keywords = extractWithRakePos({
-            text: 'cat12 cat1234',
+            text: 'b2 CFM56',
             posAllowedSet: new Set(['NN'])
         });
-        expect(keywords).toEqual(['cat12']);
+        expect(keywords).toEqual(['cfm56']);
     });
 
     test('should only return keywords with minimum frequency', () => {
