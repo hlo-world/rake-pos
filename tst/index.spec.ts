@@ -1,6 +1,7 @@
 import {brill} from 'brill';
 import extractWithRakePos from '../src/index';
 
+// NOTE(2 July 2023): This test suite is highly coupled to the contents of `brill` for each term.
 describe('extractWithRakePos function', () => {
 
     test('should extract keywords based on input', () => {
@@ -27,19 +28,19 @@ describe('extractWithRakePos function', () => {
 
     test('should return keywords with minimum character length', () => {
         const keywords = extractWithRakePos({
-            text: 'a ab abc',
+            text: 'a ab cat',
             minCharLength: 2,
             posAllowedSet: new Set(['NN'])
         });
-        expect(keywords).toEqual(['ab', 'abc']);
+        expect(keywords).toEqual(['ab', 'cat']);
     });
 
     test('should filter out phrases with more digits than alpha characters', () => {
         const keywords = extractWithRakePos({
-            text: 'ab1 123 ab1c',
+            text: 'cat12 cat1234',
             posAllowedSet: new Set(['NN'])
         });
-        expect(keywords).toEqual(['ab1c']);
+        expect(keywords).toEqual(['cat12']);
     });
 
     test('should only return keywords with minimum frequency', () => {

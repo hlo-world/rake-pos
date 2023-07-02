@@ -210,7 +210,9 @@ export default function extractWithRakePos({
     maxWordsLength?: number;
     minKeywordFrequency?: number;
 }): string[] {
-    const combinedStopWordSet = additionalStopWordSet ? new Set([...isoStopWordSet[language], ...additionalStopWordSet]) : isoStopWordSet[language];
+    const combinedStopWordSet = additionalStopWordSet ?
+        new Set([...isoStopWordSet[language], ...additionalStopWordSet]) :
+        new Set(isoStopWordSet[language] || []);
     const rawPhraseList = extractRawKeywords(text).map(normalizeKeyword);
     const phraseList = filterKeywords(
         rawPhraseList,
