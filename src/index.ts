@@ -1,14 +1,33 @@
-import { fromPairs, sortBy, toPairs } from 'lodash';
-import { brill } from 'brill';
+import {brill} from 'brill';
 import isoStopWordSet from 'stopwords-iso/stopwords-iso.json';
 
 const CHAR_CODE_ZERO = "0".charCodeAt(0);
 const CHAR_CODE_NINE = "9".charCodeAt(0);
+const DEFAULT_WORD_DELIMITERS = /[^a-zA-Z0-9_+\-/]/
+
+/* --- TYPES --- */
 
 /**
  * A function that takes a keyword and returns true if it is acceptable, false otherwise.
  */
 type AcceptabilityFilter = (keyword: string) => boolean;
+
+/**
+ * A record of a keyword's frequency, degree, and score.
+ */
+type KeywordScores = { frequency: number, degree: number, score: number }
+
+/**
+ * A record of each phrase to its frequency and score.
+ */
+type PhraseScores = Record<string, { frequency: number, score: number }>;
+
+/**
+ * A record of each phrase to its score, and each keyword to its frequency, degree, and score.
+ */
+type MultiScores = { phrases: PhraseScores, keywords: Record<string, KeywordScores> }
+
+/* --- IMPLEMENTATION --- */
 
 /**
  * Tests whether a string character is a digit.
@@ -17,7 +36,7 @@ type AcceptabilityFilter = (keyword: string) => boolean;
 function isNumber(char: string) {
     // In case the "char" is not actually a single character; we only care about the first character.
     const charCode = char.charCodeAt(0);
-    return( charCode >= CHAR_CODE_ZERO && charCode <= CHAR_CODE_NINE );
+    return (charCode >= CHAR_CODE_ZERO && charCode <= CHAR_CODE_NINE);
 }
 
 /**
@@ -63,42 +82,15 @@ function createMaxWordsLengthFilter(maxWordsLength: number): AcceptabilityFilter
     return (phrase: string) => phrase.split(/\b/).length <= maxWordsLength;
 }
 
-function countOccurrences(haystack: string[], needle: string): number {
-    return haystack.reduce((n: number, value: string) => {
-        return n + (value === needle ? 1 : 0);
-    }, 0);
-}
-
-function generateCandidateKeywordScores(
-    phraseList: string[],
-    wordScore: Record<string, number>,
-    minKeywordFrequency = 1
-): Record<string, number> {
-    const keywordCandidates: Record<string, number> = {};
-
-    phraseList.forEach((phrase) => {
-        if (minKeywordFrequency > 1) {
-            if (countOccurrences(phraseList, phrase) < minKeywordFrequency) {
-                return;
-            }
-        }
-        if (!(phrase in keywordCandidates)) {
-            keywordCandidates[phrase] = 0;
-        }
-        const wordList = separateWords(phrase, 0);
-        let candidateScore = 0;
-        wordList.forEach((word) => {
-            candidateScore += wordScore[word];
-            keywordCandidates[phrase] = candidateScore;
-        });
-    });
-    return keywordCandidates;
-}
-
-function separateWords(text: string, minWordReturnSize: number): string[] {
-    const wordDelimiters = /[^a-zA-Z0-9_+\-/]/;
+/**
+ * Split words in a phrase with a custom regex word boundary.
+ * @param text
+ * @param minWordReturnSize
+ * @param wordBoundary
+ */
+function separateWords(text: string, minWordReturnSize: number, wordBoundary: RegExp = DEFAULT_WORD_DELIMITERS): string[] {
     const words: string[] = [];
-    text.split(wordDelimiters).forEach((singleWord) => {
+    text.split(wordBoundary).forEach((singleWord) => {
         const currentWord = singleWord.trim().toLowerCase();
         // Leave numbers in phrase, but don't count as words, since they tend to invalidate scores of their phrases
         if (currentWord.length > minWordReturnSize && currentWord !== '' && !isNumber(currentWord)) {
@@ -108,39 +100,59 @@ function separateWords(text: string, minWordReturnSize: number): string[] {
     return words;
 }
 
-function calculateWordScores(phraseList: string[]): Record<string, number> {
-    const wordFrequency: Record<string, number> = {};
-    const wordDegree: Record<string, number> = {};
+/**
+ * Return a record of each phrase to its score.
+ * Also return the interstitial record of keyword to each keyword's frequency, degree, and score.
+ */
+function generateScoredPhrases(phraseList: string[], minKeywordFrequency = 1): MultiScores {
+    // We need to score each word across all phrases.
+    const keywordScores: Record<string, KeywordScores> = {}
+    // Use this  to track references to each word in phrase, then tally the
+    //  phrase score from references.
+    const phraseScores: PhraseScores = {}
+    const phraseToWordScores: Record<string, Set<KeywordScores>> = {};
+
+    // NOTE(2 July 2023): This implementation retains a phrase-splitting step that is not
+    //  relevant to this implementation. It is retained for compatibility with the target
+    //  RAKE implementation. To make this step relevant, we would need to implement a phrase
+    //  extraction algorithm that allows whitespace-separated keywords in a phrase.
     phraseList.forEach((phrase) => {
+        if (!(phrase in phraseScores)) {
+            phraseScores[phrase] = {frequency: 0, score: 0};
+            phraseToWordScores[phrase] = new Set();
+        }
+        // Filter on this value after we tally scores for all our subphrases (words).
+        phraseScores[phrase].frequency += 1;
+
         const wordList = separateWords(phrase, 0);
-        const wordListLength = wordList.length;
-        const wordListDegree = wordListLength - 1;
+        const wordListDegree = wordList.length - 1;
         wordList.forEach((word) => {
-            if (!(word in wordFrequency)) {
-                wordFrequency[word] = 0;
+            if (!(word in keywordScores)) {
+                keywordScores[word] = {frequency: 0, degree: 0, score: 0};
             }
-            wordFrequency[word] += 1;
-            if (!(word in wordDegree)) {
-                wordDegree[word] = 0;
-            }
-            wordDegree[word] += wordListDegree;
+            phraseToWordScores[phrase].add(keywordScores[word]);
+            keywordScores[word].frequency += 1;
+            keywordScores[word].degree += wordListDegree;
         });
     });
 
-    Object.keys(wordFrequency).forEach((item) => {
-        wordDegree[item] = wordDegree[item] + wordFrequency[item];
-    });
+    // Tally the score for each keyword across all phrases.
+    for (const [_, score] of Object.entries(keywordScores)) {
+        score.score = score.degree / score.frequency;
+    }
 
-    // Calculate Word scores = deg(w)/frew(w)
-    const wordScore: Record<string, number> = {};
-    Object.keys(wordFrequency).forEach((item) => {
-        if (!(item in wordScore)) {
-            wordScore[item] = 0;
+    // Tally the score for each phrase that meets the minimum keyword frequency.
+    for (const [phrase, wordScores] of Object.entries(phraseToWordScores)) {
+        // We don't check for `undefined` because we initialize phraseScores with phraseToWordScores.
+        if (phraseScores[phrase].frequency < minKeywordFrequency) {
+            continue
         }
-        wordScore[item] = wordDegree[item] / (wordFrequency[item]);
-    });
+        for (const wordScore of wordScores) {
+            phraseScores[phrase].score += wordScore.score;
+        }
+    }
 
-    return wordScore;
+    return {phrases: phraseScores, keywords: keywordScores};
 }
 
 /**
@@ -159,7 +171,6 @@ function normalizeKeyword(rawKeyword: string): string {
 
 /**
  * Filters normalized keywords using a set of stop words and zero or many manual acceptability filters.
- * Finally, deduplicates the keywords.
  */
 function filterKeywords(
     normalizedKeywords: string[],
@@ -183,14 +194,14 @@ function filterKeywords(
  * @returns {string[]} - An array of extracted keywords.
  */
 export default function extractWithRakePos({
-    text,
-    language = 'en',
-    additionalStopWordSet,
-    posAllowedSet = new Set<string>(['NN', 'NNS']),
-    minCharLength = 1,
-    maxWordsLength = 5,
-    minKeywordFrequency = 1,
-}: {
+                                               text,
+                                               language = 'en',
+                                               additionalStopWordSet,
+                                               posAllowedSet = new Set<string>(['NN', 'NNS']),
+                                               minCharLength = 1,
+                                               maxWordsLength = 5,
+                                               minKeywordFrequency = 1,
+                                           }: {
     text: string;
     language?: string;
     additionalStopWordSet?: Set<string>;
@@ -211,15 +222,25 @@ export default function extractWithRakePos({
             // createMaxWordsLengthFilter(maxWordsLength),
             createAlphaDigitsAcceptabilityFilter()
         ])
-    const wordScores = calculateWordScores(phraseList);
-    const keywordCandidates = generateCandidateKeywordScores(phraseList, wordScores, minKeywordFrequency);
-    const sortedKeywords = fromPairs(sortBy(toPairs(keywordCandidates), (pair: any) => pair[1]).reverse());
-    const keywordsList: string[] = Object.keys(sortedKeywords);
-    const posAllowedList = Array.from(posAllowedSet);
-    // filter by POS input set
-    const posFilteredKeywordsList = keywordsList.filter((keyword) => {
-        const keywordPOS = brill[keyword];
-        return keywordPOS && posAllowedList.some((allowedPOS) => keywordPOS.includes(allowedPOS));
-    });
-    return posFilteredKeywordsList;
+
+    // Score the phrases and keywords all at once, to avoid performing repeat computations many times. We could also
+    // use memoization, but this is simpler.
+    const {phrases} = generateScoredPhrases(phraseList, minKeywordFrequency);
+
+    // Get a list of <phrase, score> pairs for sorting.
+    const keywordCandidatesPairs: [string, number][] = Object.entries(phrases).map(
+        ([phrase, score]) => [phrase, score.score]
+    );
+
+    // Sort descending by score, in place.
+    keywordCandidatesPairs.sort((p1, p2) => p2[1] - p1[1])
+
+    // Get only the keys of the sorted pairs, then filter by existence of intersection between brill content and our
+    //   allowed parts of speech `posAllowedSet`.
+    return keywordCandidatesPairs.map((pair) => pair[0])
+        .filter((keyword) => {
+            const keywordPOS = brill[keyword] || []; // Protect against undefined.
+            const intersect = new Set([...keywordPOS].filter(x => posAllowedSet.has(x)));
+            return intersect.size > 0;
+        });
 }
