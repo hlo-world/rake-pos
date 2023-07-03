@@ -171,16 +171,30 @@ function normalizeKeyword(rawKeyword: string): string {
 }
 
 /**
+ * Chains multiple AcceptabilityFilters together to create a single AcceptabilityFilter.
+ */
+function chainAcceptabilityFilters(...filters: AcceptabilityFilter[]): AcceptabilityFilter {
+    // We could use `every`, but this will short circuit on the first false.
+    return (keyword: string) => {
+        for (const filter of filters) {
+            if (!filter(keyword)) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+
+/**
  * Filters normalized keywords using a set of stop words and zero or many manual acceptability filters.
  */
 function filterKeywords(
     normalizedKeywords: string[],
     acceptabilityFilters: AcceptabilityFilter[]
 ): string[] {
-    return acceptabilityFilters.reduce(
-        (keywords, filter) => keywords.filter(filter),
-        normalizedKeywords
-    );
+    const chain = chainAcceptabilityFilters(...acceptabilityFilters);
+    return normalizedKeywords.filter(chain);
 }
 
 /**
@@ -229,8 +243,8 @@ export default function extractWithRakePos({
     const phraseList = filterKeywords(
         rawPhraseList,
         [
-            createStopWordFilter(combinedStopWordSet),
             createMinCharLengthFilter(minCharLength),
+            createStopWordFilter(combinedStopWordSet),
             // NOTE(2 July 2023): This filter is disabled because the original implementation in this package made it irrelevant.
             //   To make this relevant, we need to create "keywords" in a way that allows whitespace to be included.
             // createMaxWordsLengthFilter(maxWordsLength),
