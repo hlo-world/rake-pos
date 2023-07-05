@@ -28,46 +28,84 @@ describe('extractWithRakePos function', () => {
 
     test('should return keywords with minimum character length', () => {
         const keywords = extractWithRakePos({
-            text: 'a ab cat',
-            minCharLength: 2,
+            text: 'this cat is an ad',
+            minCharLength: 3,
             posAllowedSet: new Set(['NN'])
         });
-        expect(keywords).toEqual(['ab', 'cat']);
+        expect(keywords).toEqual(['cat']);
     });
 
     test('should filter out phrases with more digits than alpha characters', () => {
         const keywords = extractWithRakePos({
-            text: 'b2 CFM56',
+            text: 'this CFM56 does not go on a B70',
             posAllowedSet: new Set(['NN'])
         });
         expect(keywords).toEqual(['cfm56']);
     });
 
-    test('should only return keywords with minimum frequency', () => {
+    test('should only return keywords with allowed POS tags', () => {
+        brill['abs'] = ['NN'];
         const keywords = extractWithRakePos({
-            text: 'ab ab cat',
+            text: 'jeremy has no abs',
+            posAllowedSet: new Set(['NN'])
+        });
+        expect(keywords).toEqual(['abs']);
+    });
+
+    test('should only return keywords with minimum frequency', () => {
+        brill['cat'] = ['NN'];
+        const keywords = extractWithRakePos({
+            text: 'cat in the hat is cat in the bag',
             minKeywordFrequency: 2,
             posAllowedSet: new Set(['NN'])
         });
-        expect(keywords).toEqual(['ab']);
-    });
-
-    test('should only return keywords with allowed POS tags', () => {
-        brill['ab'] = ['NN'];
-        const keywords = extractWithRakePos({
-            text: 'ab jeremy',
-            posAllowedSet: new Set(['NN'])
-        });
-        expect(keywords).toEqual(['ab']);
+        expect(keywords).toEqual(['cat']);
     });
 
     test('should work with different languages', () => {
         brill['hola'] = ['NN'];
+        brill['mundo'] = ['NN'];
         const keywords = extractWithRakePos({
-            text: 'hola mundo',
+            text: '¡hola, mundo!',
             language: 'es',
             posAllowedSet: new Set(['NN'])
         });
-        expect(keywords).toEqual(['hola']);
+        expect(keywords).toEqual(['hola', 'mundo']);
     });
+
+    test('should work with phrases', () => {
+        const keywords = extractWithRakePos({
+            text: 'Natural language processing (NLP) is a subfield of artificial intelligence. It focuses on the interaction between computers and humans. Natural language processing techniques are used in various applications.',
+        });
+        expect(keywords).toEqual([
+            'natural language processing techniques',
+            'natural language processing',
+            'artificial intelligence',
+            'nlp',
+            'subfield',
+            'focuses',
+            'interaction',
+            'computers',
+            'humans',
+            'applications'
+        ]);
+    });
+
+    test('should be able to filter out long phrases', () => {
+      const keywords = extractWithRakePos({
+          text: 'Natural language processing (NLP) is a subfield of artificial intelligence. It focuses on the interaction between computers and humans. Natural language processing techniques are used in various applications.',
+          maxWordsLength: 3,
+      });
+      expect(keywords).toEqual([
+          'natural language processing',
+          'artificial intelligence',
+          'nlp',
+          'subfield',
+          'focuses',
+          'interaction',
+          'computers',
+          'humans',
+          'applications'
+      ]);
+  });
 });

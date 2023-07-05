@@ -1,4 +1,4 @@
-import {brill} from 'brill';
+import { brill } from 'brill';
 import isoStopWordSet from 'stopwords-iso/stopwords-iso.json';
 
 const CHAR_CODE_ZERO = "0".charCodeAt(0);
@@ -79,7 +79,7 @@ function createMinCharLengthFilter(minCharLength: number): AcceptabilityFilter {
  * Create an AcceptabilityFilter that filters for maxWordsLength, using the word boundary regex.
  */
 function createMaxWordsLengthFilter(maxWordsLength: number): AcceptabilityFilter {
-    return (phrase: string) => phrase.split(/\b/).length <= maxWordsLength;
+    return (phrase: string) => phrase.split(/\s/).length <= maxWordsLength;
 }
 
 /**
@@ -112,13 +112,9 @@ function generateScoredPhrases(phraseList: string[], minKeywordFrequency = 1): M
     const phraseScores: PhraseScores = {}
     const phraseToWordScores: Record<string, Set<KeywordScores>> = {};
 
-    // NOTE(2 July 2023): This implementation retains a phrase-splitting step that is not
-    //  relevant to this implementation. It is retained for compatibility with the target
-    //  RAKE implementation. To make this step relevant, we would need to implement a phrase
-    //  extraction algorithm that allows whitespace-separated keywords in a phrase.
     phraseList.forEach((phrase) => {
         if (!(phrase in phraseScores)) {
-            phraseScores[phrase] = {frequency: 0, score: 0};
+            phraseScores[phrase] = { frequency: 0, score: 0 };
             phraseToWordScores[phrase] = new Set();
         }
         // Filter on this value after we tally scores for all our subphrases (words).
@@ -128,7 +124,7 @@ function generateScoredPhrases(phraseList: string[], minKeywordFrequency = 1): M
         const wordListDegree = wordList.length - 1;
         wordList.forEach((word) => {
             if (!(word in keywordScores)) {
-                keywordScores[word] = {frequency: 0, degree: 0, score: 0};
+                keywordScores[word] = { frequency: 0, degree: 0, score: 0 };
             }
             phraseToWordScores[phrase].add(keywordScores[word]);
             keywordScores[word].frequency += 1;
@@ -153,14 +149,72 @@ function generateScoredPhrases(phraseList: string[], minKeywordFrequency = 1): M
         }
     }
 
-    return {phrases: phraseScores, keywords: keywordScores};
+    return { phrases: phraseScores, keywords: keywordScores };
 }
 
 /**
- * Extract raw keywords from a text using regex word boundary matching.
+ * Extract raw keyphrases from a text using regex word boundary matching.
  */
-function extractRawKeywords(text: string): string[] {
-    return text.match(/\b\w+\b/g) || [];
+function extractKeyphrases(text: string, stopwords: Set<string>): string[] {
+    // Convert the input text to lowercase for case-insensitive comparison
+    const lowercaseText = text.toLowerCase();
+
+    // Define common punctuations to split the text
+    const punctuations = /[!¡"#$%&'()*+,-./:;<=>¿?@[\]^_`{|}~]/g;
+
+    // Split the text into individual words
+    const words = lowercaseText.split(/\s+/);
+
+    // Initialize an array to store the keyphrases
+    const keyPhrases: string[] = [];
+
+    let currentPhrase = '';
+
+    // Iterate through each word in the text
+    for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+
+        // Skip stopwords and empty words and punctuations
+        if (stopwords.has(word) || word.length === 0 || word.replace(punctuations, '').length === 0) {
+            // Add the previous phrase (if any) to the keyPhrases array
+            if (currentPhrase.length > 0) {
+                keyPhrases.push(currentPhrase);
+            }
+
+            // Start a new phrase
+            currentPhrase = '';
+            continue;
+        }
+
+        // If word starts with any punctuation, cut off previous phrase and strip all leading punctuations on current word
+        if (word.charAt(0).match(punctuations)) {
+            if (currentPhrase.length > 0) {
+                keyPhrases.push(currentPhrase);
+            }
+            // Remove leading punctuations
+            const leadingPunctuations = /^[\p{P}]+/u;
+            words[i] = word.replace(leadingPunctuations, '');
+
+            // Start a new phrase
+            currentPhrase = '';
+        }
+
+        // Add the current word to the last phrase if it's a continuation
+        currentPhrase += ' ' + word;
+
+        // Cut it off if the word ends in any punctuation
+        if (word.charAt(word.length - 1).match(punctuations)) {
+            keyPhrases.push(currentPhrase.replace(punctuations, ''));
+            currentPhrase = '';
+        }
+    }
+
+    // Add the last phrase to the keyPhrases array
+    if (currentPhrase.length > 0) {
+        keyPhrases.push(currentPhrase);
+    }
+
+    return keyPhrases;
 }
 
 /**
@@ -213,21 +267,21 @@ function queryBrill(keyword: string): string[] {
  * @param {string} text - The text from which keywords are to be extracted.
  * @param {string} [language='en'] - The language of the text.
  * @param {Set<string>} [additionalStopWordSet=new Set<string>([''])] - Additional set of stop words to be excluded.
- * @param {Set<string>} [posAllowedSet=new Set<string>(['NN', 'NNS'])] - Set of allowed parts of speech (POS) tags.
+ * @param {Set<string>} - Set of allowed parts of speech (POS) tags. If set, only return words that intersect words in the POS tags' list
  * @param {number} [minCharLength=1] - Minimum character length for a keyword.
  * @param {number} [maxWordsLength=5] - Maximum number of words in a keyword.
  * @param {number} [minKeywordFrequency=1] - Minimum frequency of a keyword to be considered.
  * @returns {string[]} - An array of extracted keywords.
  */
 export default function extractWithRakePos({
-                                               text,
-                                               language = 'en',
-                                               additionalStopWordSet,
-                                               posAllowedSet = new Set<string>(['NN', 'NNS']),
-                                               minCharLength = 1,
-                                               maxWordsLength = 5,
-                                               minKeywordFrequency = 1,
-                                           }: {
+    text,
+    language = 'en',
+    additionalStopWordSet,
+    posAllowedSet,
+    minCharLength = 1,
+    maxWordsLength = 5,
+    minKeywordFrequency = 1,
+}: {
     text: string;
     language?: string;
     additionalStopWordSet?: Set<string>;
@@ -239,22 +293,19 @@ export default function extractWithRakePos({
     const combinedStopWordSet = additionalStopWordSet ?
         new Set([...isoStopWordSet[language], ...additionalStopWordSet]) :
         new Set(isoStopWordSet[language] || []);
-    const rawPhraseList = extractRawKeywords(text).map(normalizeKeyword);
+    const rawPhraseList = extractKeyphrases(text, new Set(isoStopWordSet[language])).map(normalizeKeyword);
     const phraseList = filterKeywords(
         rawPhraseList,
         [
             createMinCharLengthFilter(minCharLength),
             createStopWordFilter(combinedStopWordSet),
-            // NOTE(2 July 2023): This filter is disabled because the original implementation in this package made it irrelevant.
-            //   To make this relevant, we need to create "keywords" in a way that allows whitespace to be included.
-            // createMaxWordsLengthFilter(maxWordsLength),
+            createMaxWordsLengthFilter(maxWordsLength),
             createAlphaDigitsAcceptabilityFilter()
         ])
-
     // Score the phrases and keywords all at once, to avoid performing repeat computations many times. We could also
     // use memoization, but this is simpler.
-    const {phrases} = generateScoredPhrases(phraseList, minKeywordFrequency);
-
+    const { phrases } = generateScoredPhrases(phraseList, minKeywordFrequency);
+    
     // Get a list of <phrase, score> pairs for sorting.
     const keywordCandidatesPairs: [string, number][] = Object.entries(phrases).map(
         ([phrase, score]) => [phrase, score.score]
@@ -263,12 +314,17 @@ export default function extractWithRakePos({
     // Sort descending by score, in place.
     keywordCandidatesPairs.sort((p1, p2) => p2[1] - p1[1])
 
-    // Get only the keys of the sorted pairs, then filter by existence of intersection between brill content and our
-    //   allowed parts of speech `posAllowedSet`.
-    return keywordCandidatesPairs.map((pair) => pair[0])
-        .filter((keyword) => {
-            const keywordPOS = queryBrill(keyword);
-            const intersect = new Set([...keywordPOS].filter(x => posAllowedSet.has(x)));
-            return intersect.size > 0;
-        });
+    // Get only the keys of the sorted pairs
+    let result = keywordCandidatesPairs.map((pair) => pair[0]);
+    if (posAllowedSet) {
+        // Filter by existence of intersection between brill content and our
+        //   allowed parts of speech `posAllowedSet`.
+        result = result
+                    .filter((keyword) => {
+                        const keywordPOS = queryBrill(keyword);
+                        const intersect = new Set([...keywordPOS].filter(x => posAllowedSet.has(x)));
+                        return intersect.size > 0;
+                    });
+    }
+    return result;
 }
