@@ -160,7 +160,9 @@ function extractKeyphrases(text: string, stopwords: Set<string>): string[] {
     const lowercaseText = text.toLowerCase();
 
     // Define common punctuations to split the text
-    const punctuations = /[!¡"#$%&'()*+,-./:;<=>¿?@[\]^_`{|}~]/g;
+    const punctuations = '!¡"#$%&\'()*+,-./:;<=>¿?@\\[\\]^_`{|}~';
+    const punctuationRegex = new RegExp(`[${punctuations}]`, 'g');
+    const leadingPunctuationRegex = new RegExp(`^[${punctuations}]+`, 'u');
 
     // Split the text into individual words
     const words = lowercaseText.split(/\s+/);
@@ -175,7 +177,7 @@ function extractKeyphrases(text: string, stopwords: Set<string>): string[] {
         const word = words[i];
 
         // Skip stopwords and empty words and punctuations
-        if (stopwords.has(word) || word.length === 0 || word.replace(punctuations, '').length === 0) {
+        if (stopwords.has(word) || word.length === 0 || word.replace(punctuationRegex, '').length === 0) {
             // Add the previous phrase (if any) to the keyPhrases array
             if (currentPhrase.length > 0) {
                 keyPhrases.push(currentPhrase);
@@ -187,13 +189,12 @@ function extractKeyphrases(text: string, stopwords: Set<string>): string[] {
         }
 
         // If word starts with any punctuation, cut off previous phrase and strip all leading punctuations on current word
-        if (word.charAt(0).match(punctuations)) {
+        if (word.charAt(0).match(punctuationRegex)) {
             if (currentPhrase.length > 0) {
                 keyPhrases.push(currentPhrase);
             }
             // Remove leading punctuations
-            const leadingPunctuations = /^[\p{P}]+/u;
-            words[i] = word.replace(leadingPunctuations, '');
+            words[i] = word.replace(leadingPunctuationRegex, '');
 
             // Start a new phrase
             currentPhrase = '';
@@ -203,8 +204,8 @@ function extractKeyphrases(text: string, stopwords: Set<string>): string[] {
         currentPhrase += ' ' + word;
 
         // Cut it off if the word ends in any punctuation
-        if (word.charAt(word.length - 1).match(punctuations)) {
-            keyPhrases.push(currentPhrase.replace(punctuations, ''));
+        if (word.charAt(word.length - 1).match(punctuationRegex)) {
+            keyPhrases.push(currentPhrase.replace(punctuationRegex, ''));
             currentPhrase = '';
         }
     }
