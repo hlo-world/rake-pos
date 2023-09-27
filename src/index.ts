@@ -155,7 +155,7 @@ function generateScoredPhrases(phraseList: string[], minKeywordFrequency = 1): M
 /**
  * Extract raw keyphrases from a text using regex word boundary matching.
  */
-function extractKeyphrases(text: string, stopwords: Set<string>): string[] {
+function extractKeyphrases(text: string, maxWordsLength:number, stopwords: Set<string>): string[] {
     // Convert the input text to lowercase for case-insensitive comparison
     const lowercaseText = text.toLowerCase();
 
@@ -203,8 +203,10 @@ function extractKeyphrases(text: string, stopwords: Set<string>): string[] {
         // Add the current word to the last phrase if it's a continuation
         currentPhrase += ' ' + word;
 
-        // Cut it off if the word ends in any punctuation
-        if (word.charAt(word.length - 1).match(punctuationRegex)) {
+        // Cut it off if the word ends in any punctuation or if currentPhrase reached max word length allowed after this one
+        if (word.charAt(word.length - 1).match(punctuationRegex) ||
+            currentPhrase.split(' ').filter((word) => { return word !== ''}).length === maxWordsLength
+        ) {
             keyPhrases.push(currentPhrase.replace(punctuationRegex, ''));
             currentPhrase = '';
         }
@@ -294,14 +296,16 @@ export default function extractWithRakePos({
     const combinedStopWordSet = additionalStopWordSet ?
         new Set([...isoStopWordSet[language], ...additionalStopWordSet]) :
         new Set(isoStopWordSet[language] || []);
-    const rawPhraseList = extractKeyphrases(text, new Set(isoStopWordSet[language])).map(normalizeKeyword);
+    const rawPhraseList = extractKeyphrases(text, maxWordsLength, new Set(isoStopWordSet[language])).map(normalizeKeyword);
     const phraseList = filterKeywords(
         rawPhraseList,
         [
             createMinCharLengthFilter(minCharLength),
             createStopWordFilter(combinedStopWordSet),
-            createMaxWordsLengthFilter(maxWordsLength),
             createAlphaDigitsAcceptabilityFilter()
+            // NOTE(27 September 2023): MaxWordsLengthFilter disabled due to changes
+            // in extractKeyphrases that handles maxWordsLength inline
+            //createMaxWordsLengthFilter(maxWordsLength)
         ])
     // Score the phrases and keywords all at once, to avoid performing repeat computations many times. We could also
     // use memoization, but this is simpler.

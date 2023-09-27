@@ -105,7 +105,30 @@ describe('extractWithRakePos function', () => {
           'interaction',
           'computers',
           'humans',
+          'techniques',
           'applications'
       ]);
-  });
+    });
+
+    test('should split long phrases properly when maxWordsLength less than phrase length', () => {
+      const keywords = extractWithRakePos({
+          text: 'Natural language processing (NLP) is a subfield of artificial intelligence. It focuses on the interaction between computers and humans. Natural language processing techniques are used in various applications.',
+          maxWordsLength: 1,
+      });
+      expect(keywords).toEqual([
+          'natural',
+          'language',
+          'processing',
+          'nlp',
+          'subfield',
+          'artificial',
+          'intelligence',
+          'focuses',
+          'interaction',
+          'computers',
+          'humans',
+          'techniques',
+          'applications'
+      ]);
+    });
 });
